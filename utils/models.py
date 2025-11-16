@@ -167,7 +167,7 @@ class FNO1d_Bayes(nn.Module):
     @torch.no_grad()
     def mc_predict(model, x, T=20):
         """
-        Inference T sample ( each sampe is drawned from p(w\D)).
+        Inference T sample ( each sampe is drawned from p(w|D)).
         Return:
           pred_mean  [B,C,N]        = E_q[μ]
           ale_var    [B,C,N]        = E_q[σ²]
