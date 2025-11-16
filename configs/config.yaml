@@ -1,0 +1,28 @@
+model:
+  name: FNO1D
+  in_channels: 6
+  out_channels: 1
+  modes: 4
+  width: 256
+  pretrained: "pretrained/fno1d_bayes_pretrained_model.pt"
+  save_path: "pretrained/fno1d_bayes_model.pt"
+  freeze: False
+  finetuning : True
+  prior_sigma: 0.3
+  input: 6
+  output: 1473
+  epoch: 500
+data:
+  name: "thermal_ted_1d"
+  x_path: "./datasets/X_data_797.pt"
+  y_path: "./datasets/y_data_797.pt"
+  L : 1
+  dt : 1
+  T : 1473
+  T_MIN : 22.
+  T_MAX : 90.
+  CP_MIN : 800.
+  CP_MAX : 1100.
+  PS_MIN : 2350.
+  PS_MAX : 2450.
+  batch_size : 16
