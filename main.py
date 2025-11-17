@@ -28,6 +28,74 @@ def make_best_key(cov95_mean, width_mean, cov_min=COV_MIN, cov_target=COV_TARGET
     cov_gap = abs(cov95_mean - cov_target)
     return (width_mean, cov_gap)
 
+def evaluate(model_path, model_config):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+    INPUT = model_config["input"]
+    OUTPUT = model_config["output"]
+    MODES = model_config["modes"]
+    WIDTH = model_config["width"]
+    PRIOR_SIGMA = model_config["prior_sigma"]
+
+    model = FNO1d_Bayes(in_channels=INPUT, out_channels=OUTPUT, modes=MODES, width=WIDTH, prior_sigma=PRIOR_SIGMA).to(device)
+    if os.path.exists(model_path):
+        ckpt = torch.load(model_path, map_location=device)
+        model.load_state_dict(ckpt['model_state'])
+        print(f"Loaded best checkpoint from epoch {ckpt.get('epoch', -1)} "
+              f"with cov95={ckpt.get('cov95_mean', float('nan')):.2f}%, "
+              f"PIw={ckpt.get('width_mean', float('nan')):.6f}, MSE={ckpt.get('mse_mean', float('nan')):.6f}, "
+              f"best_key={ckpt.get('best_key', None)}")
+        t_start = time.time()
+        model.eval()
+        all_pred_means = []
+        all_ale_vars = []
+        all_epi_vars = []
+        all_total_vars = []
+        all_targets_val = []  # To store actual y_test values
+
+        with torch.no_grad():
+            for xb, yb in val_loader:
+                xb = xb.to(device)
+                pm, ale, epi, tot = FNO1d_Bayes.mc_predict(model, xb, T=16)  # Using 16 MC samples
+
+                all_pred_means.append(pm.cpu())
+                all_ale_vars.append(ale.cpu())
+                all_epi_vars.append(epi.cpu())
+                all_total_vars.append(tot.cpu())
+                all_targets_val.append(yb.cpu())
+
+        # Concatenate results from all batches
+        val_pred_mean = torch.cat(all_pred_means, dim=0)
+        val_ale_var = torch.cat(all_ale_vars, dim=0)
+        val_epi_var = torch.cat(all_epi_vars, dim=0)
+        val_total_var = torch.cat(all_total_vars, dim=0)
+        val_targets = torch.cat(all_targets_val, dim=0)
+
+        print(f"Validation Predicted Mean (destandardized) shape: {val_pred_mean.shape}")
+        print(f"Validation Total Variance (destandardized) shape: {val_total_var.shape}")
+        print(f"Validation Targets (destandardized) shape: {val_targets.shape}")
+
+        # Flatten the destandardized predictions and targets for metric calculation
+        preds_flat = val_pred_mean.cpu().numpy().flatten()
+        targets_flat = val_targets.cpu().numpy().flatten()
+
+        # Calculate metrics
+        mse = mean_squared_error(targets_flat, preds_flat)
+        mae = mean_absolute_error(targets_flat, preds_flat)
+        rmse = np.sqrt(mse)  # RMSE is the square root of MSE
+        r2 = r2_score(targets_flat, preds_flat)
+
+        t_end = time.time()
+
+        print(f"Metric calculation time: {t_end - t_start:.4f} seconds")
+        print("\nValidation Metrics:")
+        print(f"Mean Squared Error (MSE): {mse:.8f}")
+        print(f"Root Mean Squared Error (RMSE): {rmse:.8f}")
+        print(f"Mean Absolute Error (MAE): {mae:.8f}")
+        print(f"R-squared (R2): {r2:.8f}")
+    else:
+        print("File path not exis!")
 def train(model, model_config):
 
     #init optimizer
@@ -156,66 +224,7 @@ def train(model, model_config):
                       f"Train: loss={train_loss:.4f} | nll={train_nll:.4f} | klβ={train_kl:.4f} | β={beta:.2f} || "
                       f"QuickMC: cov95={cov95:.1f}% | PIw={width:.6f} | MSE={mse:.6f}")
 
-    # ===== Load best (nếu có validation) =====
 
-    if os.path.exists(save_path):
-        ckpt = torch.load(save_path, map_location=device)
-        model.load_state_dict(ckpt['model_state'])
-        print(f"Loaded best checkpoint from epoch {ckpt.get('epoch', -1)} "
-              f"with cov95={ckpt.get('cov95_mean', float('nan')):.2f}%, "
-              f"PIw={ckpt.get('width_mean', float('nan')):.6f}, MSE={ckpt.get('mse_mean', float('nan')):.6f}, "
-              f"best_key={ckpt.get('best_key', None)}")
-        t_start = time.time()
-        model.eval()
-        all_pred_means = []
-        all_ale_vars = []
-        all_epi_vars = []
-        all_total_vars = []
-        all_targets_val = []  # To store actual y_test values
-
-        with torch.no_grad():
-            for xb, yb in val_loader:
-                xb = xb.to(device)
-                pm, ale, epi, tot = FNO1d_Bayes.mc_predict(model, xb, T=16)  # Using 16 MC samples
-
-                all_pred_means.append(pm.cpu())
-                all_ale_vars.append(ale.cpu())
-                all_epi_vars.append(epi.cpu())
-                all_total_vars.append(tot.cpu())
-                all_targets_val.append(yb.cpu())
-
-        # Concatenate results from all batches
-        val_pred_mean = torch.cat(all_pred_means, dim=0)
-        val_ale_var = torch.cat(all_ale_vars, dim=0)
-        val_epi_var = torch.cat(all_epi_vars, dim=0)
-        val_total_var = torch.cat(all_total_vars, dim=0)
-        val_targets = torch.cat(all_targets_val, dim=0)
-
-
-        print(f"Validation Predicted Mean (destandardized) shape: {val_pred_mean.shape}")
-        print(f"Validation Total Variance (destandardized) shape: {val_total_var.shape}")
-        print(f"Validation Targets (destandardized) shape: {val_targets.shape}")
-
-        # Flatten the destandardized predictions and targets for metric calculation
-        preds_flat = val_pred_mean.cpu().numpy().flatten()
-        targets_flat = val_targets.cpu().numpy().flatten()
-
-        # Calculate metrics
-        mse = mean_squared_error(targets_flat, preds_flat)
-        mae = mean_absolute_error(targets_flat, preds_flat)
-        rmse = np.sqrt(mse)  # RMSE is the square root of MSE
-        r2 = r2_score(targets_flat, preds_flat)
-
-        t_end = time.time()
-
-        print(f"Metric calculation time: {t_end - t_start:.4f} seconds")
-        print("\nValidation Metrics:")
-        print(f"Mean Squared Error (MSE): {mse:.8f}")
-        print(f"Root Mean Squared Error (RMSE): {rmse:.8f}")
-        print(f"Mean Absolute Error (MAE): {mae:.8f}")
-        print(f"R-squared (R2): {r2:.8f}")
-    else:
-        print("Chưa có epoch nào đạt cov95 ≥ 94%, nên chưa lưu checkpoint.")
 
 if __name__ == '__main__':
 
@@ -238,6 +247,8 @@ if __name__ == '__main__':
     #Load dataset
     train_loader, val_loader = dts.load_dataset(data_config)
 
+
+
     #init BNNFNO model
 
     model = FNO1d_Bayes(in_channels=INPUT, out_channels=OUTPUT, modes=MODES, width=WIDTH, prior_sigma=PRIOR_SIGMA).to(device)
@@ -245,3 +256,5 @@ if __name__ == '__main__':
         model = models.load_fno_blocks_into_bnn(model, model_config["pretrained"], freeze = freeze)
     #=======Model trainning!=====
     train(model, model_config)
+    # ===== Load best (nếu có validation) =====
+    evaluate(model_path="pretrained/fno1d_bayes_model.pt", model_config=model_config)
