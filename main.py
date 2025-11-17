@@ -258,3 +258,4 @@ if __name__ == '__main__':
     train(model, model_config)
     # ===== Load best (nếu có validation) =====
     evaluate(model_path="pretrained/fno1d_bayes_model.pt", model_config=model_config)
+    #xong
