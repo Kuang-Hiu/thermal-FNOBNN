@@ -166,8 +166,8 @@ def train(model, model_config):
                     # MC để tách aleatoric/epistemic + coverage
                     pm, ale, epi, tot = FNO1d_Bayes.mc_predict(model, xb, T=32)
                     cov95, width, mse = models.pi95_stats(yb, pm, tot)
-                    cov95_list.append(cov95);
-                    width_list.append(width);
+                    cov95_list.append(cov95)
+                    width_list.append(width)
                     mse_list.append(mse)
                 ale_mean = torch.mean(ale).item()
                 epi_mean = torch.mean(epi).item()
@@ -258,4 +258,5 @@ if __name__ == '__main__':
     train(model, model_config)
     # ===== Load best (nếu có validation) =====
     evaluate(model_path="pretrained/fno1d_bayes_model.pt", model_config=model_config)
+    print("finish")
 
