@@ -28,6 +28,8 @@ def make_best_key(cov95_mean, width_mean, cov_min=COV_MIN, cov_target=COV_TARGET
     cov_gap = abs(cov95_mean - cov_target)
     return (width_mean, cov_gap)
 
+def evaluate(modelpath):
+    pass
 def train(model, model_config):
 
     #init optimizer
