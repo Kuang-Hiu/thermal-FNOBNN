@@ -64,7 +64,9 @@ def evaluate(model_path, model_config):
                 all_epi_vars.append(epi.cpu())
                 all_total_vars.append(tot.cpu())
                 all_targets_val.append(yb.cpu())
-
+        ale_mean = torch.mean(ale).item()
+        epi_mean = torch.mean(epi).item()
+        print(f"Aleatoric mean var={ale_mean:.6e} | Epistemic mean var={epi_mean:.6e}")
         # Concatenate results from all batches
         val_pred_mean = torch.cat(all_pred_means, dim=0)
         val_ale_var = torch.cat(all_ale_vars, dim=0)
@@ -72,9 +74,7 @@ def evaluate(model_path, model_config):
         val_total_var = torch.cat(all_total_vars, dim=0)
         val_targets = torch.cat(all_targets_val, dim=0)
 
-        print(f"Validation Predicted Mean (destandardized) shape: {val_pred_mean.shape}")
-        print(f"Validation Total Variance (destandardized) shape: {val_total_var.shape}")
-        print(f"Validation Targets (destandardized) shape: {val_targets.shape}")
+        print(f"Validation Predicted  shape: {val_pred_mean.shape}")
 
         # Flatten the destandardized predictions and targets for metric calculation
         preds_flat = val_pred_mean.cpu().numpy().flatten()
