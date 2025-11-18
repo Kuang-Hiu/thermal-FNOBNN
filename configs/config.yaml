@@ -8,7 +8,7 @@ model:
   save_path: "pretrained/fno1d_bayes_model.pt"
   freeze: False
   finetuning : True
-  prior_sigma: 0.3
+  prior_sigma: 0.001
   input: 6
   output: 1473
   epoch: 500

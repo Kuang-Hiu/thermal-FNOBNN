@@ -1,0 +1,4 @@
+*.pt
+.ipynb_checkpoints\
+configs\
+pretrained\

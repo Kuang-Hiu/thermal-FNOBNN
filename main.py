@@ -119,7 +119,7 @@ def train(model, model_config):
         running_kl = 0.0
 
         # KL annealing: tăng beta 0->1 trong 20 epoch đầu
-        beta = 1e-6 * min(1.0, epoch / 20.0)
+        beta =  1e-2*min(1.0, epoch / 20.0)
 
         for xb, yb in train_loader:  # xb:[B,C_in,N], yb:[B,C_out,N]
             xb, yb = xb.to(device), yb.to(device)

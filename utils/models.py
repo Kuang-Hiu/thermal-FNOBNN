@@ -142,7 +142,7 @@ class FNO1d_Bayes(nn.Module):
         out, kl = self.fc2_bayes(x)  # [B, 2*C_out, N]
         mu, logvar = torch.split(out, self.out_channels, dim=1)
         # Stabilize logvar (optional clamp)
-        logvar = torch.clamp(logvar, min=-15.0, max=-10)
+        logvar = torch.clamp(logvar, min=-15.0, max=-8)
         return mu, logvar, kl
 
     # ========= ELBO loss =========
