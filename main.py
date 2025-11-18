@@ -255,7 +255,7 @@ if __name__ == '__main__':
     if FINETUNING:
         model = models.load_fno_blocks_into_bnn(model, model_config["pretrained"], freeze = freeze)
     #=======Model trainning!=====
-    train(model, model_config)
+    #train(model, model_config)
     # ===== Load best (nếu có validation) =====
     evaluate(model_path="pretrained/fno1d_bayes_model.pt", model_config=model_config)
     print("finish")
